@@ -43,9 +43,9 @@ object WordCount {
     val values: DStream[String] = dstream.map(record => record.value)
     val words: DStream[String] = values.flatMap(_.split(" "))
     val wordCountInitial: DStream[(String, Int)] = words.map(word => (word,1))
-    val wordsCount: DStream[(String, Int)] = wordCountInitial.reduceByKey(_+_)
+    val wordsCount: DStream[(String, Int)] = wordCountInitial.updateStateByKey[Int](updateFunction _)
     wordsCount.print()
-
+    ssc.checkpoint("checkPoints/")
     ssc.start
 
     // the above code is printing out topic details every 5 seconds
@@ -53,5 +53,10 @@ object WordCount {
 
     //ssc.stop(stopSparkContext = false)
     ssc.awaitTermination()  // Wait for the computation to terminate
+  }
+
+  def updateFunction(newValues:Seq[Int], runningCount:Option[Int]):Option[Int] = {
+    val newCount =  newValues.sum + runningCount.getOrElse(0)
+    Some(newCount)
   }
 }
